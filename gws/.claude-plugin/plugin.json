@@ -1,0 +1,8 @@
+{
+  "name": "gws",
+  "description": "Google Workspace CLI (gws) for Gmail, Calendar, Drive, Sheets, Docs, Tasks, and more",
+  "author": {
+    "name": "bitchbot",
+    "email": "stephenhamilton@covertauto.com"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "gemini-cli",
+  "description": "Use Google Gemini CLI as a review/second-opinion tool from within Claude Code",
+  "author": {
+    "name": "bitchbot",
+    "email": "stephenhamilton@covertauto.com"
+  }
+}

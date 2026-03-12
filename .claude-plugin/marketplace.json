@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "bitchbot-plugins",
+  "description": "Custom Claude Code plugins for bitchbot",
+  "owner": {
+    "name": "bitchbot",
+    "email": "stephenhamilton@covertauto.com"
+  },
+  "plugins": [
+    {
+      "name": "gemini-cli",
+      "description": "Use Google Gemini CLI as a review/second-opinion tool from within Claude Code",
+      "source": "./gemini-cli",
+      "category": "development"
+    },
+    {
+      "name": "gws",
+      "description": "Google Workspace CLI (gws) for Gmail, Calendar, Drive, Sheets, Docs, Tasks, and more",
+      "source": "./gws",
+      "category": "productivity"
+    }
+  ]
+}
