@@ -1,0 +1,24 @@
+name: AI review trigger
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch review to hub
+        run: |
+          curl -sf -X POST \
+            -H "Authorization: Bearer ${{ secrets.AI_REVIEW_PAT }}" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/srh3877/code-review/dispatches \
+            -d '{
+              "event_type": "pr-review",
+              "client_payload": {
+                "repo": "${{ github.repository }}",
+                "pr": ${{ github.event.pull_request.number }},
+                "head_sha": "${{ github.event.pull_request.head.sha }}"
+              }
+            }'
