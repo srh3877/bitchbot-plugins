@@ -1,11 +1,27 @@
 name: AI review trigger
 
+# Opt-in, not automatic. Reviewing every push on every PR produced rounds that
+# never converged (one PR ran 10 rounds and 127 findings), so the panel now
+# runs only on PRs explicitly marked for it:
+#
+#   gh pr edit <n> --add-label deep-review
+#
+# Once labelled, every subsequent push to that PR is reviewed too — the label
+# is a property of the PR, not a one-shot trigger. Remove it to stop.
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened, labeled, synchronize]
 
 jobs:
   dispatch:
+    # `labeled` fires for every label; only ours starts a review. The other
+    # three review only a PR that already carries the label — including
+    # `opened`, because a PR created with the label in the same API call
+    # (`gh pr create --label deep-review`, auto-labelers, PR templates) never
+    # emits a separate `labeled` event; the label arrives in the open payload.
+    if: |
+      (github.event.action == 'labeled' && github.event.label.name == 'deep-review') ||
+      (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'deep-review'))
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch review to hub
