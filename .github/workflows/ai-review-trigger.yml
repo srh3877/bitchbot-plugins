@@ -1,32 +1,27 @@
 name: AI review trigger
 
-# Opt-in, not automatic. Reviewing every push on every PR produced rounds that
-# never converged (one PR ran 10 rounds and 127 findings), so the panel now
-# runs only on PRs explicitly marked for it:
-#
-#   gh pr edit <n> --add-label deep-review
-#
-# Once labelled, every subsequent push to that PR is reviewed too — the label
-# is a property of the PR, not a one-shot trigger. Remove it to stop.
+# Every PR, every push. Note the cost this carries: a push that lands while a
+# review is running gets its own round, and since a round's fixes are the next
+# round's diff, PRs can accumulate rounds without converging (one ran 10 rounds
+# and 127 findings). The quorum gate and pinned models cut the noise per round
+# but do not bound the number of rounds — only the trigger does. If that starts
+# to bite again, dropping `synchronize` reviews every PR exactly once.
 on:
   pull_request:
-    types: [opened, reopened, labeled, synchronize]
+    types: [opened, synchronize, reopened]
 
 jobs:
   dispatch:
-    # `labeled` fires for every label; only ours starts a review. The other
-    # three review only a PR that already carries the label — including
-    # `opened`, because a PR created with the label in the same API call
-    # (`gh pr create --label deep-review`, auto-labelers, PR templates) never
-    # emits a separate `labeled` event; the label arrives in the open payload.
-    if: |
-      (github.event.action == 'labeled' && github.event.label.name == 'deep-review') ||
-      (github.event.action != 'labeled' && contains(github.event.pull_request.labels.*.name, 'deep-review'))
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch review to hub
         run: |
-          curl -sf -X POST \
+          # `curl -sf` reports a rejected dispatch as bare "exit code 22" with
+          # no status and no body, which is how an expired AI_REVIEW_PAT looked
+          # like nothing happening at all. Capture the status and print
+          # GitHub's own error (it never contains the token).
+          code=$(curl -s -o /tmp/dispatch-response.json -w '%{http_code}' \
+            -X POST \
             -H "Authorization: Bearer ${{ secrets.AI_REVIEW_PAT }}" \
             -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/srh3877/code-review/dispatches \
@@ -37,4 +32,16 @@ jobs:
                 "pr": ${{ github.event.pull_request.number }},
                 "head_sha": "${{ github.event.pull_request.head.sha }}"
               }
-            }'
+            }')
+          if [ "$code" = "204" ]; then
+            echo "dispatched pr-review for PR #${{ github.event.pull_request.number }}"
+            exit 0
+          fi
+          echo "::error::review dispatch rejected with HTTP $code"
+          cat /tmp/dispatch-response.json || true
+          case "$code" in
+            401) echo "AI_REVIEW_PAT is invalid or expired — reissue it and re-run onboard-all.sh" ;;
+            404) echo "AI_REVIEW_PAT cannot see srh3877/code-review — check its repository access" ;;
+            403) echo "AI_REVIEW_PAT lacks Contents: write on srh3877/code-review" ;;
+          esac
+          exit 1
