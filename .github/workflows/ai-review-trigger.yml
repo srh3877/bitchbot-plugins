@@ -1,17 +1,16 @@
 name: AI review trigger
 
-# Every PR, every push. Note the cost this carries: a push that lands while a
-# review is running gets its own round, and since a round's fixes are the next
-# round's diff, PRs can accumulate rounds without converging (one ran 10 rounds
-# and 127 findings). The quorum gate and pinned models cut the noise per round
-# but do not bound the number of rounds — only the trigger does. If that starts
-# to bite again, dropping `synchronize` reviews every PR exactly once.
+# Deep review is an explicit, one-shot request. Add `ai-review-final` when the
+# PR is ready; the hub consumes the label after publishing. Pushes do not launch
+# another full review. Re-add the label once for the closure-only verification
+# round after fixing blockers.
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [labeled]
 
 jobs:
   dispatch:
+    if: github.event.label.name == 'ai-review-final'
     runs-on: ubuntu-latest
     steps:
       - name: Dispatch review to hub
